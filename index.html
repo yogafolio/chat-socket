@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <title>Socket io node js application</title>
+    <style media="screen">
+        * {
+            box-sizing: border-box;
+        }
+        form {
+            /* position: absolute; */
+            /* bottom: 0px; */
+            width: 100%;
+            background: grey;
+            padding: 20px;
+        }
+        li {
+            padding: 5px;
+        }
+        li:nth-child(even){
+        background: #333;
+        color: white;
+        }
+        li:nth-child(odd){
+        background: white;
+        color: #333;
+        }
+        #nama_user {
+             float: left; width: 20%; height: 30px; border: none;
+        }
+        #text_box {
+             float: left; width: 20%; height: 30px; border: none; margin-left: 10px;
+        }
+        button {
+            float: left; width: 20%; height: 33px;
+        }
+        .hidden {
+            display: none;
+        }
+        #rightBox {
+            float: left;
+            width:75%;
+            overflow: auto;
+        }
+        #leftBox {
+            float:left;
+            width: 25%;
+        }
+        form {
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="homepage" class="container">
+        <h1>Welcome to chatroom Fun</h1>
+        <input type="text" id="nama_user" placeholder="your name...">
+        <button id="submit_name">Masuk !</button>
+    </div>
+    <div id="chatroom" class="hidden container">
+        <div id="leftBox">
+            <ul id="messages"></ul>
+        </div>
+        
+        <div id="rightBox">
+            <h2>Daftar user yang online</h2>
+            <ul id="user_lists"></ul>
+        </div>
+
+        <form>
+           <input type="text" id="text_box" placeholder="input your chat"><button>Kirim</button>
+        </form>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        var socket = io();
+        var username = '';
+
+        $('form').submit(function(){
+            username = $('#nama_user').val();
+            socket.emit('newMessage', '[' + username + ']' + ' : ' + $('#text_box').val());
+            $('#text_box').val('');
+            return false;
+        });
+
+        //daftar user
+        socket.on('addOnlineUsers', function(usernames){
+            $('#user_lists').empty();
+            
+            for(var i=0; i<usernames.length; i++){
+                $('#user_lists').append($('<li id="user_' + usernames[i] +'">').text(usernames[i]));
+            }
+        });
+        
+        //ketika ada disconnet
+        socket.on('disconnect', function(user){
+            $('#user_' + username).remove();
+        });
+
+        //untuk menampilkan frontend
+        socket.on('newMessage', function(msg){
+            $('#messages').append($('<li>').text(msg + ' || pada: ' + Date()));
+            $(".temporary").remove();
+        });
+
+        //ketika user daftar nama -> masuk ke chatroom
+        $('#submit_name').click(function(){
+            //validasi apakah namanya sudah ada atau belum
+            if($('#nama_user') != ''){
+                //menguji nama exist atau belum
+                username = $('#nama_user').val();
+                socket.emit('registerUser', username);
+            }
+        });
+
+        //menerima respon dari server saat register
+        socket.on('registerRespond', function(status){
+            if(status == false) {
+                alert('user sudah ada, mohon gunakan nama lain');
+            } else {
+                $('#chatroom').removeClass('hidden');
+                $('#homepage').addClass('hidden');
+            }
+        });
+
+        //when someone typing
+        var isTyping = false;
+        $('#text_box').keyup(function(){
+            if(isTyping == false) {
+                socket.emit('newTyping', username + ' sedang mengetik...');
+            }
+            isTyping = true;
+        });
+
+        socket.on('newTyping', function(msg){
+            $('#messages').append($('<li class="temporary">').text(msg));
+        });
+
+    </script>
+</body>
+</html>
